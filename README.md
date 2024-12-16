@@ -9,6 +9,7 @@ Ansible script to install HashiCorp Vault.
 - Writes Keys and Tokes to file calle "KEYS"
 
 See: https://www.relay70.com/hashicorp-vault-with-admin-account/
+
 for the manual steps and explanations.
 
 ### Command
