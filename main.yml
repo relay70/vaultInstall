@@ -20,6 +20,14 @@
 
     outfile: "./KEYS"
 
+    username: "admin"
+
+  vars_prompt:
+    - name: adminpassword
+      prompt: "Password for admin user"
+      private: true
+
+
   tasks:
 
 ### SYSTEM PREP ###
@@ -28,9 +36,9 @@
         name: "dnf-plugins-core"
         state: present
 
-    - name: Install Hashi Repo
-      ansible.builtin.command:
-        cmd: dnf config-manager --add-repo {{ hashirepourl }}
+    # - name: Install Hashi Repo
+    #  ansible.builtin.command:
+    #    cmd: dnf config-manager --add-repo {{ hashirepourl }}
 
     - name: Install Vault
       ansible.builtin.dnf:
@@ -70,19 +78,50 @@
         path: "{{ outfile }}"
         line: "{{ item }}"
         create: true
+        mode: '0400'
       with_items:
         - "{{ initoutput.stdout_lines | select('match', 'Unseal Key') }}"
 
+    # - name: Get Root Token
+    #  ansible.builtin.debug:
+    #    msg: "{{ item }}"
+    #  with_items:
+    #    - "{{ initoutput.stdout_lines | select('match', 'Initial Root Token: ') }}"
+
     - name: Get Root Token
-      ansible.builtin.debug:
-        msg: "{{ item }}"
+      ansible.builtin.set_fact:
+        token: "{{ item.split(' ') | last }}"
       with_items:
         - "{{ initoutput.stdout_lines | select('match', 'Initial Root Token: ') }}"
 
     - name: Write Root Token to file
       ansible.builtin.lineinfile:
         path: "{{ outfile }}"
-        line: "{{ item }}"
+        line: "Initial Root Token: {{ item }}"
         create: true
+        mode: '0400'
       with_items:
-        - "{{ initoutput.stdout_lines | select('match', 'Initial Root Token') }}"
+        - "{{ token }}"
+
+    - name: Copy Admin Policy file
+      ansible.builtin.copy:
+        src: "./configFiles/adminPolicy.hcl"
+        dest: "/tmp/adminPolicy.hcl"
+        mode: '0666'
+
+    ## Moved to next task.
+    # - name: Create Admin Policy
+    #  ansible.builtin.command:
+    #    cmd: vault policy write admin /tmp/adminPolicy.hcl
+    #  environment:
+    #    VAULT_TOKEN: "{{ token }}"
+
+    - name: Enable UserPass and Admin
+      ansible.builtin.command:
+        cmd: "{{ item }}"
+      environment:
+        VAULT_TOKEN: "{{ token }}"
+      with_items:
+        - "vault policy write admin /tmp/adminPolicy.hcl"
+        - "vault auth enable userpass"
+        - "vault write auth/userpass/users/admin password={{ adminpassword }} policies=admins"

@@ -7,6 +7,8 @@ Ansible script to install HashiCorp Vault.
 - Enables Service
 - Unseals database
 - Writes Keys and Tokes to file calle "KEYS"
+- Creates admin policy
+- Creates admin user with admin policy
 
 See: https://www.relay70.com/hashicorp-vault-with-admin-account/
 
