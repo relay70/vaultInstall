@@ -124,4 +124,4 @@
       with_items:
         - "vault policy write admin /tmp/adminPolicy.hcl"
         - "vault auth enable userpass"
-        - "vault write auth/userpass/users/admin password={{ adminpassword }} policies=admins"
+        - "vault write auth/userpass/users/admin password={{ adminpassword }} policies=admin"
