@@ -1,0 +1,88 @@
+---
+- name: Install HashiCorp Vault
+  hosts: all
+  become: true
+  become_method: sudo
+  become_user: root
+
+  ## Set these here. We'll need them in a few tasks
+  environment:
+    VAULT_ADDR: 'https://127.0.0.1:8200'
+    VAULT_SKIP_VERIFY: true
+
+  vars:
+    hashirepourl: "https://rpm.releases.hashicorp.com/fedora/hashicorp.repo"
+    support_packages:
+      - dnf-plugins-core
+
+    packages:
+      - vault
+
+    outfile: "./KEYS"
+
+  tasks:
+
+### SYSTEM PREP ###
+    - name: Install dnf-plugins
+      ansible.builtin.dnf:
+        name: "dnf-plugins-core"
+        state: present
+
+    - name: Install Hashi Repo
+      ansible.builtin.command:
+        cmd: dnf config-manager --add-repo {{ hashirepourl }}
+
+    - name: Install Vault
+      ansible.builtin.dnf:
+        name: "vault"
+        state: present
+
+    - name: Enable Start vault
+      ansible.builtin.systemd_service:
+        name: vault
+        enabled: true
+        state: started
+
+    - name: Initialize Vault
+      ansible.builtin.command:
+        cmd: vault operator init
+      register: initoutput
+
+    # - name: Get Keys
+    #  ansible.builtin.debug:
+    #    msg: "{{ item.split(' ') | last }}"
+    #  with_items:
+    #    - "{{ initoutput.stdout_lines | select('match', 'Unseal Key') }}"
+    #  register: unsealkeys
+
+    # - name: Debug
+    #  ansible.builtin.debug:
+    #    msg: "{{ unsealkeys }}"
+
+    - name: Unseal Vault
+      ansible.builtin.command:
+        cmd: "vault operator unseal {{ item.split(' ') | last }}"
+      with_items:
+        - "{{ initoutput.stdout_lines | select('match', 'Unseal Key') }}"
+
+    - name: Write Keys to file
+      ansible.builtin.lineinfile:
+        path: "{{ outfile }}"
+        line: "{{ item }}"
+        create: true
+      with_items:
+        - "{{ initoutput.stdout_lines | select('match', 'Unseal Key') }}"
+
+    - name: Get Root Token
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ initoutput.stdout_lines | select('match', 'Initial Root Token: ') }}"
+
+    - name: Write Root Token to file
+      ansible.builtin.lineinfile:
+        path: "{{ outfile }}"
+        line: "{{ item }}"
+        create: true
+      with_items:
+        - "{{ initoutput.stdout_lines | select('match', 'Initial Root Token') }}"
