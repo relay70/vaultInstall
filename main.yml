@@ -24,7 +24,7 @@
 
   vars_prompt:
     - name: adminpassword
-      prompt: "Password for admin user"
+      prompt: "Password for new admin user"
       private: true
 
 
@@ -36,9 +36,9 @@
         name: "dnf-plugins-core"
         state: present
 
-    # - name: Install Hashi Repo
-    #  ansible.builtin.command:
-    #    cmd: dnf config-manager --add-repo {{ hashirepourl }}
+    - name: Install Hashi Repo
+      ansible.builtin.command:
+        cmd: dnf config-manager --add-repo {{ hashirepourl }}
 
     - name: Install Vault
       ansible.builtin.dnf:
